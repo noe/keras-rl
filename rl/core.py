@@ -6,15 +6,22 @@ from rl.callbacks import TestLogger, TrainEpisodeLogger, TrainIntervalLogger, Vi
 
 
 class Agent(object):
+
+    def __init__(self, model):
+        self._model = model
+
+    def compile(self, optimizer, metrics=[]):
+        self._model.compile(optimizer, metrics)
+
     def fit(self, env, nb_steps, action_repetition=1, callbacks=[], verbose=1,
         visualize=False, nb_max_start_steps=0, start_step_policy=None, log_interval=10000,
         nb_max_episode_steps=None):
-        if not self.compiled:
+        if not self._model.compiled:
             raise RuntimeError('Your tried to fit your agent but it hasn\'t been compiled yet. Please call `compile()` before `fit()`.')
         if action_repetition < 1:
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
-        self.training = True
+        self._model.training = True
 
         if verbose == 1:
             callbacks += [TrainIntervalLogger(interval=log_interval)]
@@ -31,13 +38,13 @@ class Agent(object):
         callbacks.on_train_begin()
 
         episode = 0
-        self.step = 0
+        self._model.step = 0
         observation = None
         episode_reward = None
         episode_step = None
         did_abort = False
         try:
-            while self.step < nb_steps:
+            while self._model.step < nb_steps:
                 if observation is None:  # start of a new episode
                     callbacks.on_episode_begin(episode)
                     episode_step = 0
@@ -70,10 +77,10 @@ class Agent(object):
                 assert observation is not None
 
                 # Run a single step.
-                callbacks.on_step_begin(episode_step)    
+                callbacks.on_step_begin(episode_step)
                 # This is were all of the work happens. We first perceive and compute the action
                 # (forward step) and then use the reward to improve (backward step).
-                action = self.forward(observation)
+                action = self._model.forward(observation)
                 reward = 0.
                 done = False
                 for _ in xrange(action_repetition):
@@ -83,9 +90,9 @@ class Agent(object):
                     reward += r
                     if done:
                         break
-                metrics = self.backward(reward, terminal=done)
+                metrics = self._model.backward(reward, terminal=done)
                 episode_reward += reward
-                    
+
                 step_logs = {
                     'action': action,
                     'observation': observation,
@@ -95,14 +102,14 @@ class Agent(object):
                 }
                 callbacks.on_step_end(episode_step, step_logs)
                 episode_step += 1
-                self.step += 1
+                self._model.step += 1
 
                 if done or (nb_max_episode_steps and episode_step > nb_max_episode_steps):
                     # This episode is finished, report and reset.
                     episode_logs = {
                         'episode_reward': episode_reward,
                         'nb_episode_steps': episode_step,
-                        'nb_steps': self.step,
+                        'nb_steps': self._model.step,
                     }
                     callbacks.on_episode_end(episode, episode_logs)
 
@@ -119,12 +126,12 @@ class Agent(object):
 
     def test(self, env, nb_episodes=1, action_repetition=1, callbacks=[], visualize=True,
         nb_max_episode_steps=None, nb_max_start_steps=0, start_step_policy=None):
-        if not self.compiled:
+        if not self._model.compiled:
             raise RuntimeError('Your tried to test your agent but it hasn\'t been compiled yet. Please call `compile()` before `test()`.')
         if action_repetition < 1:
             raise ValueError('action_repetition must be >= 1, is {}'.format(action_repetition))
 
-        self.training = False
+        self._model.training = False
 
         callbacks += [TestLogger()]
         if visualize:
@@ -167,7 +174,7 @@ class Agent(object):
             while not done:
                 callbacks.on_step_begin(episode_step)
 
-                action = self.forward(observation)
+                action = self._model.forward(observation)
                 reward = 0.
                 for _ in xrange(action_repetition):
                     callbacks.on_action_begin(action)
@@ -177,9 +184,9 @@ class Agent(object):
                     if d:
                         done = True
                         break
-                self.backward(reward, terminal=done)
+                self._model.backward(reward, terminal=done)
                 episode_reward += reward
-                
+
                 callbacks.on_step_end(episode_step)
                 episode_step += 1
                 if nb_max_episode_steps and episode_step > nb_max_episode_steps:
@@ -191,22 +198,13 @@ class Agent(object):
             callbacks.on_episode_end(episode, episode_logs)
 
     def reset_states(self):
-        pass
-
-    def forward(self, observation):
-        raise NotImplementedError()
-
-    def backward(self, reward, terminal):
-        raise NotImplementedError()
-
-    def compile(self, optimizer, metrics=[]):
-        raise NotImplementedError()
+        self._model.reset_states()
 
     def load_weights(self, filepath):
-        raise NotImplementedError()
+        self._model.load_weights(filepath)
 
     def save_weights(self, filepath, overwrite=False):
-        raise NotImplementedError()
+        self._model.save_weights(filepath, overwrite)
 
     @property
     def metrics_names(self):

@@ -8,6 +8,7 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Flatten, Convolution2D
 from keras.optimizers import Adam
 
+from rl.core import Agent
 from rl.agents.dqn import DQNAgent
 from rl.policy import LinearAnnealedPolicy, BoltzmannQPolicy, EpsGreedyQPolicy
 from rl.memory import SequentialMemory
@@ -94,9 +95,18 @@ policy = LinearAnnealedPolicy(EpsGreedyQPolicy(), attr='eps', value_max=1., valu
 # policy = BoltzmannQPolicy(tau=1.)
 # Feel free to give it a try!
 
-dqn = DQNAgent(model=model, nb_actions=nb_actions, policy=policy, window_length=WINDOW_LENGTH, memory=memory,
-    processor=processor, nb_steps_warmup=50000, gamma=.99, delta_range=(-1., 1.), reward_range=(-1., 1.),
-    target_model_update=10000, train_interval=4)
+dqn = Agent(DQNAgent(model=model,
+                     nb_actions=nb_actions,
+                     policy=policy,
+                     window_length=WINDOW_LENGTH,
+                     memory=memory,
+                     processor=processor,
+                     nb_steps_warmup=50000,
+                     gamma=.99,
+                     delta_range=(-1., 1.),
+                     reward_range=(-1., 1.),
+                     target_model_update=10000,
+                     train_interval=4))
 dqn.compile(Adam(lr=.00025), metrics=['mae'])
 
 if args.mode == 'train':

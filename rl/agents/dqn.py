@@ -6,7 +6,6 @@ import keras.backend as K
 from keras.layers import Lambda, Input, merge
 from keras.models import Model
 
-from rl.core import Agent
 from rl.policy import EpsGreedyQPolicy
 from rl.util import *
 
@@ -18,7 +17,7 @@ def mean_q(y_true, y_pred):
 # An implementation of the DQN agent as described in Mnih (2013) and Mnih (2015).
 # http://arxiv.org/pdf/1312.5602.pdf
 # http://arxiv.org/abs/1509.06461
-class DQNAgent(Agent):
+class DQNAgent(object):
     def __init__(self, model, nb_actions, memory, window_length=1, policy=EpsGreedyQPolicy(),
                  gamma=.99, batch_size=32, nb_steps_warmup=1000, train_interval=1, memory_interval=1,
                  target_model_update=10000, reward_range=(-np.inf, np.inf),
@@ -29,8 +28,7 @@ class DQNAgent(Agent):
             raise ValueError('Model "{}" has more than one output. DQN expects a model that has a single output.'.format(model))
         if model.output._keras_shape != (None, nb_actions):
             raise ValueError('Model output "{}" has invalid shape. DQN expects a model that has one dimension for each action, in this case {}.'.format(model.output, nb_actions))
-        
-        super(DQNAgent, self).__init__()
+
 
         # Soft vs hard target model updates.
         if target_model_update < 0:
@@ -73,7 +71,7 @@ class DQNAgent(Agent):
         # We never train the target model, hence we can set the optimizer and loss arbitrarily.
         self.target_model = clone_model(self.model, self.custom_model_objects)
         self.target_model.compile(optimizer='sgd', loss='mse')
-        
+
         # Compile model.
         if self.target_model_update < 1.:
             # We use the `AdditionalUpdatesOptimizer` to efficiently soft-update the target model.
@@ -83,7 +81,7 @@ class DQNAgent(Agent):
             delta = K.clip(y_true - y_pred, self.delta_range[0], self.delta_range[1])
             return K.mean(K.square(delta), axis=-1)
         self.model.compile(optimizer=optimizer, loss=clipped_mse, metrics=metrics)
-        
+
         self.compiled = True
 
     # TODO: implement support for pickle
@@ -132,7 +130,7 @@ class DQNAgent(Agent):
         # Book-keeping.
         self.recent_observations.append(observation)
         self.recent_action = action
-        
+
         return action
 
     def backward(self, reward, terminal):
@@ -148,12 +146,12 @@ class DQNAgent(Agent):
         # Store most recent experience in memory.
         if self.step % self.memory_interval == 0:
             self.memory.append(self.recent_observations[-1], self.recent_action, reward, terminal)
-        
+
         # Train the network on a single stochastic batch.
         if self.step > self.nb_steps_warmup and self.step % self.train_interval == 0:
             experiences = self.memory.sample(self.batch_size, self.window_length)
             assert len(experiences) == self.batch_size
-            
+
             # Start by extracting the necessary parameters (we use a vectorized implementation).
             state0_batch = []
             reward_batch = []
@@ -231,16 +229,13 @@ class DQNAgent(Agent):
         return self.model.metrics_names[:] + self.policy.metrics_names[:]
 
 
-class ContinuousDQNAgent(DQNAgent):
+class ContinuousDQNAgent(object):
     def __init__(self, V_model, L_model, mu_model, nb_actions, memory, window_length=1,
                  gamma=.99, batch_size=32, nb_steps_warmup=1000, train_interval=1, memory_interval=1,
                  target_model_update=10000, reward_range=(-np.inf, np.inf),
                  delta_range=(-np.inf, np.inf), custom_model_objects={}, processor=None,
                  random_process=None):
         # TODO: Validate (important) input.
-        
-        # TODO: call super of abstract DQN agent
-        #super(DQNAgent, self).__init__()
 
         # Soft vs hard target model updates.
         if target_model_update < 0:
@@ -320,7 +315,7 @@ class ContinuousDQNAgent(DQNAgent):
             Ls = []
             LTs = []
             for idx in xrange(self.batch_size):
-                L = K.zeros((self.nb_actions, self.nb_actions)) 
+                L = K.zeros((self.nb_actions, self.nb_actions))
                 L = T.set_subtensor(L[np.tril_indices(self.nb_actions)], L_flat[idx, :])
                 diag = K.exp(T.diag(L))
                 L = T.set_subtensor(L[np.diag_indices(self.nb_actions)], diag)
@@ -399,7 +394,7 @@ class ContinuousDQNAgent(DQNAgent):
         # Book-keeping.
         self.recent_observations.append(observation)
         self.recent_action = action
-        
+
         return action
 
     def backward(self, reward, terminal):
@@ -415,12 +410,12 @@ class ContinuousDQNAgent(DQNAgent):
         # Store most recent experience in memory.
         if self.step % self.memory_interval == 0:
             self.memory.append(self.recent_observations[-1], self.recent_action, reward, terminal)
-        
+
         # Train the network on a single stochastic batch.
         if self.step > self.nb_steps_warmup and self.step % self.train_interval == 0:
             experiences = self.memory.sample(self.batch_size, self.window_length)
             assert len(experiences) == self.batch_size
-            
+
             # Start by extracting the necessary parameters (we use a vectorized implementation).
             state0_batch = []
             reward_batch = []

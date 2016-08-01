@@ -16,7 +16,7 @@ def mean_q(y_true, y_pred):
 # Deep DPG as described by Lillicrap et al. (2015)
 # http://arxiv.org/pdf/1509.02971v2.pdf
 # http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.646.4324&rep=rep1&type=pdf
-class DDPGAgent(Agent):
+class DDPGAgent(object):
     def __init__(self, nb_actions, actor, critic, critic_action_input, memory, window_length=1,
                  gamma=.99, batch_size=32, nb_steps_warmup_critic=1000, nb_steps_warmup_actor=1000,
                  train_interval=1, memory_interval=1, reward_range=(-np.inf, np.inf),
@@ -36,7 +36,6 @@ class DDPGAgent(Agent):
         if critic_action_input._keras_shape != actor.output._keras_shape:
             raise ValueError('Critic "{}" and actor "{}" do not have matching shapes')
 
-        super(DDPGAgent, self).__init__()
 
         # Soft vs hard target model updates.
         if target_model_update < 0:

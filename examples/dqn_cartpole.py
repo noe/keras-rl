@@ -8,6 +8,7 @@ from keras.optimizers import Nadam
 from rl.agents.dqn import DQNAgent
 from rl.policy import BoltzmannQPolicy
 from rl.memory import SequentialMemory
+from rl.core import Agent
 
 
 ENV_NAME = 'CartPole-v0'
@@ -34,8 +35,12 @@ print(model.summary())
 # even the metrics!
 memory = SequentialMemory(limit=50000)
 policy = BoltzmannQPolicy()
-dqn = DQNAgent(model=model, nb_actions=nb_actions, memory=memory, nb_steps_warmup=10,
-    target_model_update=1e-2, policy=policy)
+dqn = Agent(DQNAgent(model=model,
+                     nb_actions=nb_actions,
+                     memory=memory,
+                     nb_steps_warmup=10,
+                     target_model_update=1e-2,
+                     policy=policy))
 dqn.compile(Nadam(lr=1e-3), metrics=['mae'])
 
 # Okay, now it's time to learn something! We visualize the training here for show, but this
