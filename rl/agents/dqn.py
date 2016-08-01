@@ -24,6 +24,10 @@ class DQNAgent(object):
                  delta_range=(-np.inf, np.inf), enable_double_dqn=True,
                  custom_model_objects={}, processor=None):
         # Validate (important) input.
+
+        # TODO: call super of abstract DQN agent
+        #super(DQNAgent, self).__init__()
+
         if hasattr(model.output, '__len__') and len(model.output) > 1:
             raise ValueError('Model "{}" has more than one output. DQN expects a model that has a single output.'.format(model))
         if model.output._keras_shape != (None, nb_actions):
@@ -229,7 +233,7 @@ class DQNAgent(object):
         return self.model.metrics_names[:] + self.policy.metrics_names[:]
 
 
-class ContinuousDQNAgent(object):
+class ContinuousDQNAgent(DQNAgent):
     def __init__(self, V_model, L_model, mu_model, nb_actions, memory, window_length=1,
                  gamma=.99, batch_size=32, nb_steps_warmup=1000, train_interval=1, memory_interval=1,
                  target_model_update=10000, reward_range=(-np.inf, np.inf),
